@@ -1,0 +1,38 @@
+/* START RESPONSIVE CSS */
+@media (min-width: 1200px) {
+  :root {
+    --container-size: 1250px;
+  }
+  /* .container {
+    max-width: var(--container-size);
+  } */
+}
+@media (min-width: 1280px) {
+  :root {
+    --container-size: 1200px;
+  }
+}
+@media (min-width: 1366px) {
+  :root {
+    --container-size: 1250px;
+  }
+}
+@media (min-width: 1440px) {
+  :root {
+    --container-size: 1300px;
+  }
+}
+@media (min-width: 1600px) {
+  :root {
+    --container-size: 1350px;
+  }
+}
+@media (min-width: 1680px) {
+  :root {
+    --container-size: 1440px;
+  }
+}
+
+
+/* ENDS RESPONSIVE CSS */
+
