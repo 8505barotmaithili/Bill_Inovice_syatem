@@ -13,6 +13,8 @@ export default function InvoiceForm({ file, data, setData }) {
   const [successMsg, setSuccessMsg] = useState(null);
   const formRef = useRef(null);
 
+  const [isEditing, setIsEditing] = useState(false);
+
   const handleChange = (e) => {
     setData({ ...data, [e.target.name]: e.target.value });
   };
@@ -20,6 +22,30 @@ export default function InvoiceForm({ file, data, setData }) {
   const showSuccess = (msg) => {
     setSuccessMsg(msg);
     setTimeout(() => setSuccessMsg(null), 3000);
+  };
+
+  const handleSave = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/invoices/${data._id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to save changes on server");
+      }
+
+      const updated = await response.json();
+      setData(updated);
+      setIsEditing(false);
+      showSuccess("Changes saved successfully!");
+    } catch (err) {
+      console.error("Save error:", err);
+      alert("Error saving changes: " + err.message);
+    }
   };
 
   // ===== EXPORT PDF =====
@@ -181,7 +207,10 @@ export default function InvoiceForm({ file, data, setData }) {
     setExporting(null);
   };
 
-  const invoicePreviewUrl = file ? URL.createObjectURL(file) : null;
+  const previewUrl = file ? URL.createObjectURL(file) : data?.fileUrl;
+  const isPdf = file
+    ? file.type === "application/pdf"
+    : (data?.fileUrl?.toLowerCase().endsWith(".pdf") || data?.filePath?.toLowerCase().endsWith(".pdf"));
 
   return (
     <div className="relative pb-10">
@@ -509,14 +538,22 @@ export default function InvoiceForm({ file, data, setData }) {
                       <p className="text-xs text-gray-400">Reference image</p>
                     </div>
                   </div>
-                  <div className="p-4 flex-1 flex items-center">
-                    {file ? (
+                  <div className="p-4 flex-1 flex items-center justify-center">
+                    {previewUrl ? (
                       <div className="relative group w-full">
-                        <img
-                          src={invoicePreviewUrl}
-                          alt="invoice"
-                          className="w-full h-72 object-contain rounded-xl border border-gray-200 bg-gray-50/50"
-                        />
+                        {isPdf ? (
+                          <iframe
+                            src={previewUrl}
+                            title="Invoice Reference"
+                            className="w-full h-72 rounded-xl border border-gray-200"
+                          />
+                        ) : (
+                          <img
+                            src={previewUrl}
+                            alt="invoice"
+                            className="w-full h-72 object-contain rounded-xl border border-gray-200 bg-gray-50/50"
+                          />
+                        )}
                       </div>
                     ) : (
                       <div className="w-full h-72 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50/30 flex flex-col items-center justify-center gap-3 text-gray-400">
@@ -622,6 +659,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onChange={handleChange}
                         placeholder="INV-2026-001"
                         icon={Icons.hash}
+                        disabled={!isEditing}
                       />
                       <Input
                         label="Invoice Date"
@@ -631,6 +669,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onChange={handleChange}
                         placeholder="YYYY-MM-DD"
                         icon={Icons.calendar}
+                        disabled={!isEditing}
                       />
                     </div>
 
@@ -643,6 +682,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onChange={handleChange}
                         placeholder="ABC Pvt Ltd"
                         icon={Icons.user}
+                        disabled={!isEditing}
                       />
                       <Input
                         label="Taxable Value"
@@ -652,6 +692,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onChange={handleChange}
                         placeholder="50000"
                         icon={Icons.dollar}
+                        disabled={!isEditing}
                       />
                     </div>
 
@@ -665,6 +706,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onChange={handleChange}
                         placeholder="59000"
                         icon={Icons.rupee}
+                        disabled={!isEditing}
                       />
                       <div className="rounded-xl border-2 border-indigo-100 bg-gradient-to-br from-indigo-50 to-blue-50/30 p-4 flex flex-col justify-center">
                         <div className="flex items-center gap-2 text-indigo-600">
@@ -695,7 +737,9 @@ export default function InvoiceForm({ file, data, setData }) {
                     {/* Address + Totals */}
                     <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
                       <div className="lg:col-span-3">
-                        <div className="relative rounded-xl border-2 border-gray-200 transition-all duration-200 bg-white focus-within:border-indigo-500 focus-within:shadow-sm focus-within:shadow-indigo-100 hover:border-gray-300">
+                        <div className={`relative rounded-xl border-2 border-gray-200 transition-all duration-200 bg-white focus-within:border-indigo-500 focus-within:shadow-sm focus-within:shadow-indigo-100 hover:border-gray-300 ${
+                          !isEditing ? "opacity-60 bg-gray-50/30" : ""
+                        }`}>
                           <div className="absolute left-3.5 top-3 text-gray-400">
                             {Icons.mapPin}
                           </div>
@@ -707,7 +751,10 @@ export default function InvoiceForm({ file, data, setData }) {
                             value={data.address}
                             onChange={handleChange}
                             placeholder="Enter full billing address"
-                            className="w-full min-h-[110px] bg-transparent outline-none px-4 pt-5 pb-3 pl-[46px] text-sm font-medium text-gray-900 placeholder:text-gray-400 border-0 rounded-xl"
+                            disabled={!isEditing}
+                            className={`w-full min-h-[110px] bg-transparent outline-none px-4 pt-5 pb-3 pl-[46px] text-sm font-medium text-gray-900 placeholder:text-gray-400 border-0 rounded-xl transition-all duration-200 ${
+                              !isEditing ? "cursor-not-allowed opacity-60 bg-gray-50/50" : ""
+                            }`}
                           />
                         </div>
                       </div>
@@ -774,11 +821,59 @@ export default function InvoiceForm({ file, data, setData }) {
 
                     {/* Buttons */}
                     <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-gray-100">
+                      {isEditing ? (
+                        <Button
+                          variant="success"
+                          onClick={handleSave}
+                          iconLeft={
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <polyline points="20 6 9 17 4 12" />
+                            </svg>
+                          }
+                        >
+                          Save Changes
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="primary"
+                          onClick={() => setIsEditing(true)}
+                          iconLeft={
+                            <svg
+                              xmlns="http://www.w3.org/2000/svg"
+                              width="16"
+                              height="16"
+                              viewBox="0 0 24 24"
+                              fill="none"
+                              stroke="currentColor"
+                              strokeWidth="2.5"
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                            >
+                              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+                            </svg>
+                          }
+                        >
+                          Edit Details
+                        </Button>
+                      )}
+
                       <Button
                         variant="primary"
                         onClick={exportPDF}
                         iconLeft={Icons.pdf}
                         loading={exporting === "pdf"}
+                        disabled={isEditing}
                       >
                         Export PDF
                       </Button>
@@ -787,6 +882,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onClick={exportExcel}
                         iconLeft={Icons.excel}
                         loading={exporting === "excel"}
+                        disabled={isEditing}
                       >
                         Export Excel
                       </Button>
@@ -795,6 +891,7 @@ export default function InvoiceForm({ file, data, setData }) {
                         onClick={exportXML}
                         iconLeft={Icons.xml}
                         loading={exporting === "xml"}
+                        disabled={isEditing}
                       >
                         Export XML
                       </Button>
@@ -811,6 +908,7 @@ export default function InvoiceForm({ file, data, setData }) {
                           });
                         }}
                         iconLeft={Icons.refresh}
+                        disabled={!isEditing}
                       >
                         Reset
                       </Button>

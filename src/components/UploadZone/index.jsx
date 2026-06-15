@@ -4,7 +4,10 @@ import { Icons } from "../../constant/icons";
 
 export default function UploadZone({ onUpload }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
-    accept: { "image/*": [] },
+    accept: {
+      "image/*": [],
+      "application/pdf": [],
+    },
     onDrop: (files) => {
       onUpload(files[0]);
     },
@@ -134,7 +137,7 @@ export default function UploadZone({ onUpload }) {
             {/* Footer */}
             <div className="mt-6 text-center">
               <p className="text-xs text-gray-400">
-                Your file is processed locally. Nothing is uploaded to a server.
+                Your file is uploaded to the secure server for invoice details extraction.
               </p>
             </div>
           </div>

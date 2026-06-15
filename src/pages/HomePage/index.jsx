@@ -1,64 +1,49 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import Header from "../../components/Header";
 import UploadZone from "../../components/UploadZone";
 import InvoiceForm from "../../components/InvoiceForm";
-import AllbillPage from "../AllbillPage";
-
-const STORAGE_KEY = "invoices";
-
-function safeParseInvoices(raw) {
-  try {
-    const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
-  } catch {
-    return [];
-  }
-}
 
 export const HomePage = () => {
   const [file, setFile] = useState(null);
   const [data, setData] = useState(null);
 
-  const currentInvoiceKey = useMemo(() => {
-    if (!data?.invoiceNumber) return null;
-    return data.invoiceNumber;
-  }, [data]);
-
-  useEffect(() => {
-    if (!data?.invoiceNumber) return;
-
-    const raw = localStorage.getItem(STORAGE_KEY);
-    const existing = safeParseInvoices(raw);
-
-    const alreadyExists = existing.some(
-      (x) => x.invoiceNumber === data.invoiceNumber,
-    );
-    if (alreadyExists) return;
-
-    const next = {
-      id: Date.now(),
-      ...data,
-    };
-
-    localStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify([...(existing || []), next]),
-    );
-  }, [currentInvoiceKey, data]);
-
-  const handleFileUpload = (file) => {
+  const handleFileUpload = async (file) => {
     setFile(file);
-    // Fake OCR auto-fill (mock data)
-    setTimeout(() => {
-      setData({
-        invoiceNumber: "INV-2026-001",
-        invoiceDate: "2026-06-13",
-        clientName: "ABC Pvt Ltd",
-        taxableValue: 50000,
-        invoiceValue: 59000,
-        address: "Surat, Gujarat, India",
+    
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      const response = await fetch("http://localhost:5000/api/invoices/upload", {
+        method: "POST",
+        body: formData,
       });
-    }, 1000);
+
+      if (!response.ok) {
+        throw new Error("File upload failed");
+      }
+
+      const ocrResult = await response.json();
+      
+      // Save parsed invoice data to MongoDB immediately
+      const createResponse = await fetch("http://localhost:5000/api/invoices", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(ocrResult),
+      });
+
+      if (!createResponse.ok) {
+        throw new Error("Failed to save invoice record in DB");
+      }
+
+      const savedInvoice = await createResponse.json();
+      setData(savedInvoice);
+    } catch (error) {
+      console.error("Upload error:", error);
+      alert("Error uploading invoice: " + error.message);
+    }
   };
 
   return (
@@ -68,7 +53,6 @@ export const HomePage = () => {
       {/* UPLOAD BILL*/}
       {!data && <UploadZone onUpload={handleFileUpload} />}
       {data && <InvoiceForm file={file} data={data} setData={setData} />}
-      {/* <AllbillPage /> */}
     </>
   );
 };
